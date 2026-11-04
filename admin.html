@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cloud District — Admin Control Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- QRCode CDN & PeerJS CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="store.js"></script>
+  <style>
+    :root {
+      --pk: #ff4fc3;
+      --cy: #19e6ff;
+      --bg: #070714;
+      --card-bg: rgba(13, 13, 33, 0.82);
+      --card-border: rgba(25, 230, 255, 0.25);
+      --card-hover: rgba(25, 230, 255, 0.45);
+      --text: #eaf6ff;
+      --text-muted: #8fa0be;
+      --success: #2ed573;
+      --warning: #ffa502;
+      --danger: #ff4757;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Synthwave Theme Ambient & Floor Grid in Admin */
+    .admin-ambient-glow {
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(60vw, 650px);
+      aspect-ratio: 1;
+      background: radial-gradient(circle, rgba(255, 79, 195, 0.18) 0%, rgba(25, 230, 255, 0.1) 45%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .admin-floor-grid {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 42%;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+      -webkit-mask-image: linear-gradient(transparent, #000 65%);
+      mask-image: linear-gradient(transparent, #000 65%);
+    }
+    .admin-floor-grid::before {
+      content: "";
+      position: absolute;
+      inset: -120% -60% 0;
+      background: linear-gradient(rgba(25,230,255,.4) 1.5px, transparent 1.5px) 0 0/100% 44px,
+                  linear-gradient(90deg, rgba(255,79,195,.4) 1.5px, transparent 1.5px) 0 0/64px 100%;
+      transform: perspective(380px) rotateX(64deg);
+      transform-origin: 50% 100%;
+    }
+
+    .svg-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      vertical-align: middle;
+      stroke-width: 2;
+    }
+
+    /* Top Navigation */
+    .admin-nav {
+      background: rgba(13, 13, 33, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 16px 5%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .brand b {
+      font-size: 22px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--cy), var(--pk));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 1px;
+    }
+    .brand-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(255, 79, 195, 0.15);
+      border: 1px solid var(--pk);
+      color: var(--pk);
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .btn-link {
+      color: var(--cy);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s;
+    }
+    .btn-link:hover { color: #fff; }
+    .btn-logout {
+      background: transparent;
+      border: 1px solid rgba(255, 71, 87, 0.5);
+      color: var(--danger);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover {
+      background: rgba(255, 71, 87, 0.15);
+      border-color: var(--danger);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 30px 20px 60px;
+      flex: 1;
+    }
+
+    /* Login Screen */
+    .login-wrapper {
+      min-height: 80vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(25, 230, 255, 0.15);
+      text-align: center;
+    }
+    .login-card h1 {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .login-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+    .form-group {
+      text-align: left;
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--cy);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(7, 7, 20, 0.7);
+      border: 1px solid rgba(25, 230, 255, 0.3);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--pk);
+      box-shadow: 0 0 12px rgba(255, 79, 195, 0.3);
+    }
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--pk), #a23cff);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(255, 79, 195, 0.35);
+      transition: all 0.25s;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 30px rgba(255, 79, 195, 0.6);
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: rgba(25, 230, 255, 0.1);
+      border: 1px solid var(--cy);
+      color: var(--cy);
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-secondary:hover {
+      background: rgba(25, 230, 255, 0.25);
+      box-shadow: 0 0 15px rgba(25, 230, 255, 0.3);
+    }
+    .demo-hint {
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .demo-hint code {
+      background: rgba(25, 230, 255, 0.15);
+      color: var(--cy);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--cy), var(--pk));
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #fff, var(--cy));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--cy);
+      margin-top: 4px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 12px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 12px 20px;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active {
+      color: var(--cy);
+    }
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--cy), var(--pk));
+      box-shadow: 0 0 10px var(--pk);
+    }
+
+    /* Actions Bar */
+    .actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .search-filter {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      flex: 1;
+      max-width: 600px;
+    }
+
+    /* Products Table / Grid */
+    .table-wrapper {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    th {
+      background: rgba(7, 7, 20, 0.6);
+      padding: 14px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--cy);
+      border-bottom: 1px solid var(--card-border);
+    }
+    td {
+      padding: 14px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(25, 230, 255, 0.08);
+      vertical-align: middle;
+    }
+    tr:hover td {
+      background: rgba(25, 230, 255, 0.03);
+    }
+    .prod-thumb {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 79, 195, 0.3);
+      padding: 4px;
+    }
+    .badge-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-pill .svg-icon {
+      width: 12px;
+      height: 12px;
+    }
+    .badge-bestseller { background: rgba(255, 79, 195, 0.2); border: 1px solid var(--pk); color: var(--pk); }
+    .badge-new { background: rgba(25, 230, 255, 0.2); border: 1px solid var(--cy); color: var(--cy); }
+    .badge-deal { background: rgba(255, 165, 2, 0.2); border: 1px solid #ffa502; color: #ffa502; }
+    .badge-pro { background: rgba(162, 60, 255, 0.2); border: 1px solid #a23cff; color: #d6a4ff; }
+
+    .price-wrap {
+      font-weight: 700;
+      color: #fff;
+    }
+    .price-original {
+      text-decoration: line-through;
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-left: 6px;
+    }
+    .table-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 11px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-sm .svg-icon {
+      width: 14px;
+      height: 14px;
+    }
+    .btn-sm-edit {
+      background: rgba(25, 230, 255, 0.15);
+      border: 1px solid var(--cy);
+      color: var(--cy);
+    }
+    .btn-sm-edit:hover { background: rgba(25, 230, 255, 0.3); color: #fff; }
+    .btn-sm-delete {
+      background: rgba(255, 71, 87, 0.15);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-sm-delete:hover { background: rgba(255, 71, 87, 0.3); color: #fff; }
+    .btn-sm-qr {
+      background: rgba(255, 79, 195, 0.15);
+      border: 1px solid var(--pk);
+      color: var(--pk);
+    }
+    .btn-sm-qr:hover { background: rgba(255, 79, 195, 0.3); color: #fff; }
+
+    /* Layout / Reorder Tab */
+    .reorder-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .reorder-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .reorder-item:hover {
+      border-color: var(--cy);
+      transform: translateX(4px);
+    }
+    .reorder-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+    }
+    .reorder-handle {
+      cursor: grab;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+    }
+    .reorder-handle .svg-icon {
+      width: 20px;
+      height: 20px;
+    }
+    .reorder-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-arrow {
+      background: rgba(25, 230, 255, 0.1);
+      border: 1px solid rgba(25, 230, 255, 0.3);
+      color: var(--cy);
+      width: 34px;
+      height: 34px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+    }
+    .btn-arrow .svg-icon {
+      width: 16px;
+      height: 16px;
+    }
+    .btn-arrow:hover {
+      background: var(--cy);
+      color: var(--bg);
+    }
+
+    /* Layout Mode Radio Cards */
+    .layout-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .layout-card {
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .layout-card.selected {
+      border-color: var(--pk);
+      box-shadow: 0 0 20px rgba(255, 79, 195, 0.3);
+    }
+    .layout-card h4 {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    .layout-card p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 7, 20, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(255, 79, 195, 0.2);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #fff; }
+    .modal-title {
+      font-size: 20px;
+      font-weight: 900;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--cy), var(--pk));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Photo Upload Box inside Modal */
+    .photo-upload-section {
+      background: rgba(7, 7, 20, 0.5);
+      border: 1px dashed rgba(25, 230, 255, 0.4);
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    .photo-preview-wrap {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 14px;
+      background: #000;
+      border: 1px solid var(--cy);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .photo-preview-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .photo-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* QR Code Modal Specific */
+    .qr-modal-box {
+      max-width: 460px;
+      text-align: center;
+    }
+    .qr-frame {
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      width: 250px;
+      height: 250px;
+      margin: 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px rgba(25, 230, 255, 0.4);
+    }
+    .qr-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      background: rgba(25, 230, 255, 0.15);
+      border: 1px solid var(--cy);
+      color: var(--cy);
+      margin-top: 10px;
+    }
+    .qr-status.connected {
+      background: rgba(46, 213, 115, 0.2);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--card-bg);
+      border: 1px solid var(--success);
+      color: #fff;
+      padding: 14px 22px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 15px var(--success);
+      font-size: 13px;
+      font-weight: 700;
+      z-index: 200;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast.show { display: flex; animation: slideIn 0.3s ease; }
+    @keyframes slideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Synthwave Theme Backdrop in Admin -->
+  <div class="admin-ambient-glow" aria-hidden="true"></div>
+  <div class="admin-floor-grid" aria-hidden="true"></div>
+
+  <!-- Top Bar -->
+  <nav class="admin-nav">
+    <a href="index.html" class="brand">
+      <b>CLOUD DISTRICT</b>
+      <span class="brand-tag">Admin Panel</span>
+    </a>
+    <div class="nav-actions">
+      <a href="index.html" class="btn-link">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        Torna allo Store
+      </a>
+      <button id="btnLogout" class="btn-logout" style="display:none;">Esci</button>
+    </div>
+  </nav>
+
+  <!-- Login View -->
+  <div id="loginView" class="login-wrapper">
+    <div class="login-card">
+      <h1>AREA ACCEDI ADMIN</h1>
+      <p>Gestione catalogo, scatto foto QR e disposizione store</p>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Nome Utente</label>
+          <input type="text" id="usernameInput" class="form-input" value="admin" required placeholder="admin">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="passwordInput" class="form-input" value="cloud2026" required placeholder="cloud2026">
+        </div>
+        <button type="submit" class="btn-primary">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5L11 9l1 1-3 3-1.5-1.5L6 13l1 1-1.5 1.5L7 17l-1 1-2-2-2 2 5 5 13-13z"/><circle cx="16.5" cy="7.5" r="2.5"/></svg>
+          ACCEDI ALLA DASHBOARD
+        </button>
+      </form>
+
+      <div class="demo-hint">
+        Credenziali predefinite: Utente <code>admin</code> | Password <code>cloud2026</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Authenticated Dashboard View -->
+  <main id="adminDashboard" class="container" style="display:none;">
+    
+    <!-- KPI Row -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Prodotti Totali</div>
+        <div id="kpiTotalProds" class="kpi-value">0</div>
+        <div class="kpi-sub">Attivi in catalogo</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Sigarette Elettroniche</div>
+        <div id="kpiSigarette" class="kpi-value">0</div>
+        <div class="kpi-sub">Hardware & Pod mod</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Liquidi & Aromi</div>
+        <div id="kpiLiquidi" class="kpi-value">0</div>
+        <div class="kpi-sub">Gusti e formati</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Accessori & Ricambi</div>
+        <div id="kpiAccessori" class="kpi-value">0</div>
+        <div class="kpi-sub">Coil, filtri, cover</div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="catalog">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        Catalogo Prodotti
+      </button>
+      <button class="tab-btn" data-tab="layout">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        Modifica Disposizione & Layout
+      </button>
+      <button class="tab-btn" data-tab="upsell">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        Marketing Psicologico & Upsell 8€
+      </button>
+    </div>
+
+    <!-- TAB 1: CATALOG MANAGEMENT -->
+    <section id="tab-catalog" class="tab-content">
+      <div class="actions-bar">
+        <div class="search-filter">
+          <input type="text" id="adminSearch" class="form-input" placeholder="Cerca prodotto per nome...">
+          <select id="adminCategoryFilter" class="form-input" style="max-width: 200px;">
+            <option value="all">Tutte le Categorie</option>
+            <option value="sigarette">Sigarette Elettroniche</option>
+            <option value="liquidi">Liquidi</option>
+            <option value="accessori">Accessori</option>
+          </select>
+        </div>
+        <button id="btnOpenNewProductModal" class="btn-secondary" style="border-color:var(--pk); color:var(--pk);">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Aggiungi Nuovo Prodotto
+        </button>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Foto</th>
+              <th>Nome & Categoria</th>
+              <th>Prezzo & Listino</th>
+              <th>Badge Marketing</th>
+              <th>Scorte</th>
+              <th>Hero 3D</th>
+              <th style="text-align:right;">Azioni</th>
+            </tr>
+          </thead>
+          <tbody id="productsTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 2: LAYOUT & REORDERING -->
+    <section id="tab-layout" class="tab-content" style="display:none;">
+      <h3 style="font-size:16px; margin-bottom:12px; color:var(--cy); letter-spacing:1px; text-transform:uppercase;">
+        1. Scegli la Disposizione Visiva del Catalogo
+      </h3>
+      <div class="layout-options">
+        <div class="layout-card selected" data-cols="3">
+          <h4>Griglia 3 Colonne (Consigliata)</h4>
+          <p>Equilibrio ideale tra immagini dei prodotti e dettagli tecnici.</p>
+        </div>
+        <div class="layout-card" data-cols="4">
+          <h4>Griglia 4 Colonne (Compatta)</h4>
+          <p>Visualizza più prodotti contemporaneamente. Massima densità.</p>
+        </div>
+        <div class="layout-card" data-cols="2">
+          <h4>Vetrina 2 Colonne (Grande Impatto)</h4>
+          <p>Focus estremo sulle foto e sui dettagli sensoriali.</p>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin: 30px 0 16px;">
+        <h3 style="font-size:16px; color:var(--cy); letter-spacing:1px; text-transform:uppercase;">
+          2. Modifica Ordine e Disposizione dei Prodotti
+        </h3>
+        <button id="btnSaveOrder" class="btn-secondary">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Salva Nuova Disposizione
+        </button>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">
+        Trascina o usa le frecce Su/Giù per cambiare l'ordine in cui i clienti vedranno i prodotti sullo store. I primi 3 possono essere mostrati anche nello slider Hero 3D Synthwave!
+      </p>
+
+      <div id="reorderList" class="reorder-list">
+        <!-- Dynamic list of draggable items -->
+      </div>
+    </section>
+
+    <!-- TAB 3: MARKETING & UPSELL 8€ -->
+    <section id="tab-upsell" class="tab-content" style="display:none;">
+      <div style="max-width:700px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:28px;">
+        <h3 style="font-size:18px; color:var(--pk); margin-bottom:8px;">
+          Configurazione Upsell Psicologico: "Liquido a 8€"
+        </h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:24px;">
+          Questa offerta si attiva automaticamente ogni volta che un utente aggiunge un prodotto al carrello. Sfrutta l'effetto ancoraggio, l'urgenza e la riprova sociale per aumentare il valore medio dell'ordine (AOV).
+        </p>
+
+        <form id="upsellSettingsForm">
+          <div class="form-group">
+            <label>Titolo Pop-up Upsell</label>
+            <input type="text" id="upsellTitle" class="form-input" value="Vuoi aggiungere un liquido premium a soli 8€ al tuo ordine?">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Prezzo Promozionale (€)</label>
+              <input type="number" step="0.10" id="upsellPrice" class="form-input" value="8.00">
+            </div>
+            <div class="form-group">
+              <label>Prezzo di Listino Ancorato (€)</label>
+              <input type="number" step="0.10" id="upsellOriginalPrice" class="form-input" value="14.90">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Timer di Urgenza (Secondi)</label>
+            <input type="number" id="upsellTimer" class="form-input" value="300">
+          </div>
+          <div class="form-group">
+            <label>Messaggio di Riprova Sociale</label>
+            <input type="text" id="upsellSocialProof" class="form-input" value="94% degli acquirenti aggiunge questo liquido per risparmiare 6,90€!">
+          </div>
+          <button type="submit" class="btn-primary" style="margin-top:14px;">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            SALVA IMPOSTAZIONI UPSELL
+          </button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Product Edit / Create Modal -->
+  <div id="productModal" class="modal-backdrop">
+    <div class="modal-box">
+      <button class="modal-close" id="btnCloseProductModal">&times;</button>
+      <h2 id="modalProductTitle" class="modal-title">Aggiungi Nuovo Prodotto</h2>
+
+      <form id="productForm">
+        <input type="hidden" id="prodEditId">
+
+        <!-- Photo Section with Phone QR Trigger -->
+        <div class="photo-upload-section">
+          <div class="photo-preview-wrap">
+            <img id="formImgPreview" src="img/kiwi-spark.png" alt="Anteprima">
+          </div>
+          <input type="hidden" id="prodImageInput" value="img/kiwi-spark.png">
+          
+          <div class="photo-buttons">
+            <button type="button" id="btnTriggerQrPhoto" class="btn-secondary" style="border-color:var(--pk); color:var(--pk);">
+              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/><path d="M20 14v3"/><path d="M14 20h6"/></svg>
+              Scansiona QR con il Telefono & Scatta Foto
+            </button>
+            <label class="btn-secondary" style="cursor:pointer;">
+              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              File dal PC
+              <input type="file" id="localFileInput" accept="image/*" style="display:none;">
+            </label>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+            Inquadra il QR con la fotocamera del tuo smartphone per scattare direttamente la foto del prodotto!
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Nome Prodotto *</label>
+          <input type="text" id="prodNameInput" class="form-input" required placeholder="Es. Kiwi Spark Pod Mod">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Categoria *</label>
+            <select id="prodCategoryInput" class="form-input" required>
+              <option value="sigarette">Sigarette Elettroniche</option>
+              <option value="liquidi">Liquidi</option>
+              <option value="accessori">Accessori</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Badge Psicologia Marketing</label>
+            <select id="prodBadgeTypeInput" class="form-input">
+              <option value="bestseller">Più Venduto (Bestseller)</option>
+              <option value="new">Novità Esclusiva</option>
+              <option value="deal">Offerta Lampo</option>
+              <option value="pro">Scelta Pro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Prezzo Scontato (€) *</label>
+            <input type="number" step="0.10" id="prodPriceInput" class="form-input" required placeholder="24.90">
+          </div>
+          <div class="form-group">
+            <label>Prezzo Originale Barrato (€) [Ancoraggio]</label>
+            <input type="number" step="0.10" id="prodOriginalPriceInput" class="form-input" placeholder="29.90">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Scorte Disponibili (Urgenza Scarsità)</label>
+            <input type="number" id="prodStockInput" class="form-input" value="5" min="1">
+          </div>
+          <div class="form-group">
+            <label>Valutazione Media (Stelle 1-5)</label>
+            <input type="number" step="0.1" max="5" min="3" id="prodRatingInput" class="form-input" value="4.9">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Descrizione Breve Accattivante</label>
+          <textarea id="prodDescInput" class="form-input" rows="3" placeholder="Descrivi il prodotto evidenziando i benefici per il cliente..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Punti di Forza / Specifiche (uno per riga)</label>
+          <textarea id="prodDetailsInput" class="form-input" rows="3" placeholder="Batteria a lunga durata&#10;Resistenza mesh inclusa&#10;Tiro morbido e aroma intenso"></textarea>
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="prodInHeroInput" style="accent-color:var(--pk); width:18px; height:18px;">
+          <label for="prodInHeroInput" style="margin-bottom:0; cursor:pointer;">Mostra nello Slider 3D Synthwave in Home Page</label>
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top:20px;">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          SALVA PRODOTTO
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- QR Code Modal (Scan from Phone to Take Photo) -->
+  <div id="qrModal" class="modal-backdrop">
+    <div class="modal-box qr-modal-box">
+      <button class="modal-close" id="btnCloseQrModal">&times;</button>
+      <h2 class="modal-title">Scatta Foto col Telefono</h2>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+        Inquadra questo QR Code con la fotocamera del tuo smartphone. Si aprirà la fotocamera per scattare la foto del prodotto e inviarla direttamente qui!
+      </p>
+
+      <div class="qr-frame">
+        <div id="qrCodeContainer"></div>
+      </div>
+
+      <div id="qrStatusBadge" class="qr-status">
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:currentColor;"></span>
+        <span id="qrStatusText">In attesa della scansione dal telefono...</span>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button id="btnOpenMobileTest" class="btn-secondary" style="font-size:10px;">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Oppure apri la schermata fotocamera su questo dispositivo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <svg class="svg-icon" style="color:var(--success);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toastMsg">Operazione completata con successo!</span>
+  </div>
+
+  <script>
+    // State
+    let currentSessionId = null;
+    let peerInstance = null;
+    let activeBroadcast = null;
+
+    // Elements
+    const loginView = document.getElementById('loginView');
+    const adminDashboard = document.getElementById('adminDashboard');
+    const loginForm = document.getElementById('loginForm');
+    const btnLogout = document.getElementById('btnLogout');
+    const productsTableBody = document.getElementById('productsTableBody');
+    const productModal = document.getElementById('productModal');
+    const btnCloseProductModal = document.getElementById('btnCloseProductModal');
+    const btnOpenNewProductModal = document.getElementById('btnOpenNewProductModal');
+    const productForm = document.getElementById('productForm');
+    const qrModal = document.getElementById('qrModal');
+    const btnCloseQrModal = document.getElementById('btnCloseQrModal');
+    const btnTriggerQrPhoto = document.getElementById('btnTriggerQrPhoto');
+    const qrCodeContainer = document.getElementById('qrCodeContainer');
+    const qrStatusBadge = document.getElementById('qrStatusBadge');
+    const qrStatusText = document.getElementById('qrStatusText');
+    const btnOpenMobileTest = document.getElementById('btnOpenMobileTest');
+    const formImgPreview = document.getElementById('formImgPreview');
+    const prodImageInput = document.getElementById('prodImageInput');
+    const localFileInput = document.getElementById('localFileInput');
+    const adminSearch = document.getElementById('adminSearch');
+    const adminCategoryFilter = document.getElementById('adminCategoryFilter');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    const reorderList = document.getElementById('reorderList');
+    const btnSaveOrder = document.getElementById('btnSaveOrder');
+
+    // Tab Elements
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = {
+      catalog: document.getElementById('tab-catalog'),
+      layout: document.getElementById('tab-layout'),
+      upsell: document.getElementById('tab-upsell')
+    };
+
+    // Check Auth on Load
+    function initAuth() {
+      if (CloudStore.checkAdminAuth()) {
+        showDashboard();
+      } else {
+        showLogin();
+      }
+    }
+
+    function showLogin() {
+      loginView.style.display = 'flex';
+      adminDashboard.style.display = 'none';
+      btnLogout.style.display = 'none';
+    }
+
+    function showDashboard() {
+      loginView.style.display = 'none';
+      adminDashboard.style.display = 'block';
+      btnLogout.style.display = 'inline-block';
+      renderKPIs();
+      renderTable();
+      renderReorderList();
+      initLayoutCards();
+    }
+
+    // Login Form Submit
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = document.getElementById('usernameInput').value.trim();
+      const pass = document.getElementById('passwordInput').value.trim();
+      if (user === 'admin' && pass === 'cloud2026') {
+        CloudStore.setAdminAuth(true);
+        showDashboard();
+        showToast('Accesso autorizzato come Amministratore!');
+      } else {
+        alert('Credenziali non valide. Usa admin / cloud2026');
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      CloudStore.setAdminAuth(false);
+      showLogin();
+      showToast('Logout effettuato');
+    });
+
+    // Tab Navigation
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const target = btn.dataset.tab;
+        Object.keys(tabContents).forEach(key => {
+          tabContents[key].style.display = (key === target) ? 'block' : 'none';
+        });
+      });
+    });
+
+    // Render KPIs
+    function renderKPIs() {
+      const products = CloudStore.getProducts();
+      document.getElementById('kpiTotalProds').textContent = products.length;
+      document.getElementById('kpiSigarette').textContent = products.filter(p => p.category === 'sigarette').length;
+      document.getElementById('kpiLiquidi').textContent = products.filter(p => p.category === 'liquidi').length;
+      document.getElementById('kpiAccessori').textContent = products.filter(p => p.category === 'accessori').length;
+    }
+
+    // Render Products Table
+    function renderTable() {
+      const query = (adminSearch.value || '').toLowerCase();
+      const cat = adminCategoryFilter.value;
+      let products = CloudStore.getProducts();
+
+      if (cat !== 'all') {
+        products = products.filter(p => p.category === cat);
+      }
+      if (query) {
+        products = products.filter(p => p.name.toLowerCase().includes(query) || (p.description && p.description.toLowerCase().includes(query)));
+      }
+
+      productsTableBody.innerHTML = '';
+      if (products.length === 0) {
+        productsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Nessun prodotto trovato</td></tr>`;
+        return;
+      }
+
+      products.forEach(p => {
+        const badgeIcon = CloudIcons.getBadgeIcon(p.badgeType || 'bestseller');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <img src="${p.image}" class="prod-thumb" alt="${p.name}">
+          </td>
+          <td>
+            <div style="font-weight:700; color:#fff;">${p.name}</div>
+            <div style="font-size:11px; color:var(--cy); text-transform:uppercase;">${p.categoryLabel || p.category}</div>
+          </td>
+          <td>
+            <span class="price-wrap">€${p.price.toFixed(2)}</span>
+            ${p.originalPrice ? `<span class="price-original">€${p.originalPrice.toFixed(2)}</span>` : ''}
+          </td>
+          <td>
+            <span class="badge-pill badge-${p.badgeType || 'bestseller'}">${badgeIcon} ${p.badge || 'Standard'}</span>
+          </td>
+          <td>
+            <span style="color:${p.stockLeft <= 3 ? 'var(--danger)' : 'var(--cy)'}; font-weight:700;">
+              ${p.stockLeft} pz
+            </span>
+          </td>
+          <td>
+            <span>${p.inHero ? `${CloudIcons.get('sparkles')} Attivo` : '—'}</span>
+          </td>
+          <td style="text-align:right;">
+            <div class="table-actions" style="justify-content:flex-end;">
+              <button class="btn-sm btn-sm-qr" onclick="openQrForProduct('${p.id}')" title="Scatta nuova foto con il telefono">
+                ${CloudIcons.get('qr')} QR Foto
+              </button>
+              <button class="btn-sm btn-sm-edit" onclick="openEditProduct('${p.id}')">
+                ${CloudIcons.get('edit')} Modifica
+              </button>
+              <button class="btn-sm btn-sm-delete" onclick="handleDeleteProduct('${p.id}')">
+                ${CloudIcons.get('trash')} Elimina
+              </button>
+            </div>
+          </td>
+        `;
+        productsTableBody.appendChild(tr);
+      });
+    }
+
+    adminSearch.addEventListener('input', renderTable);
+    adminCategoryFilter.addEventListener('change', renderTable);
+
+    // Open Modal: New Product
+    btnOpenNewProductModal.addEventListener('click', () => {
+      document.getElementById('modalProductTitle').textContent = 'Aggiungi Nuovo Prodotto';
+      document.getElementById('prodEditId').value = '';
+      productForm.reset();
+      formImgPreview.src = 'img/kiwi-spark.png';
+      prodImageInput.value = 'img/kiwi-spark.png';
+      document.getElementById('prodInHeroInput').checked = false;
+      productModal.classList.add('show');
+    });
+
+    btnCloseProductModal.addEventListener('click', () => {
+      productModal.classList.remove('show');
+    });
+
+    // Open Modal: Edit Product
+    window.openEditProduct = function(id) {
+      const products = CloudStore.getProducts();
+      const p = products.find(item => item.id === id);
+      if (!p) return;
+
+      document.getElementById('modalProductTitle').textContent = 'Modifica Prodotto';
+      document.getElementById('prodEditId').value = p.id;
+      document.getElementById('prodNameInput').value = p.name;
+      document.getElementById('prodCategoryInput').value = p.category;
+      document.getElementById('prodBadgeTypeInput').value = p.badgeType || 'bestseller';
+      document.getElementById('prodPriceInput').value = p.price;
+      document.getElementById('prodOriginalPriceInput').value = p.originalPrice || '';
+      document.getElementById('prodStockInput').value = p.stockLeft || 5;
+      document.getElementById('prodRatingInput').value = p.rating || 4.9;
+      document.getElementById('prodDescInput').value = p.description || '';
+      document.getElementById('prodDetailsInput').value = Array.isArray(p.details) ? p.details.join('\n') : (p.details || '');
+      document.getElementById('prodInHeroInput').checked = !!p.inHero;
+      
+      formImgPreview.src = p.image || 'img/kiwi-spark.png';
+      prodImageInput.value = p.image || 'img/kiwi-spark.png';
+
+      productModal.classList.add('show');
+    };
+
+    // Delete Product
+    window.handleDeleteProduct = function(id) {
+      if (confirm('Sei sicuro di voler rimuovere questo prodotto dal catalogo?')) {
+        CloudStore.deleteProduct(id);
+        renderKPIs();
+        renderTable();
+        renderReorderList();
+        showToast('Prodotto eliminato con successo!');
+      }
+    };
+
+    // Save Product Form
+    productForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('prodEditId').value;
+      const name = document.getElementById('prodNameInput').value.trim();
+      const category = document.getElementById('prodCategoryInput').value;
+      const badgeType = document.getElementById('prodBadgeTypeInput').value;
+      const badgeLabel = document.getElementById('prodBadgeTypeInput').selectedOptions[0].text.split(' (')[0];
+      const price = parseFloat(document.getElementById('prodPriceInput').value);
+      const originalPrice = parseFloat(document.getElementById('prodOriginalPriceInput').value) || (price * 1.25);
+      const stockLeft = parseInt(document.getElementById('prodStockInput').value, 10) || 5;
+      const rating = parseFloat(document.getElementById('prodRatingInput').value) || 4.9;
+      const description = document.getElementById('prodDescInput').value.trim();
+      const details = document.getElementById('prodDetailsInput').value.split('\n').filter(Boolean);
+      const inHero = document.getElementById('prodInHeroInput').checked;
+      const image = prodImageInput.value || 'img/kiwi-spark.png';
+
+      const payload = {
+        name,
+        category,
+        badge: badgeLabel,
+        badgeType,
+        price,
+        originalPrice,
+        stockLeft,
+        rating,
+        description,
+        details,
+        inHero,
+        image
+      };
+
+      if (editId) {
+        CloudStore.updateProduct(editId, payload);
+        showToast('Prodotto aggiornato con successo!');
+      } else {
+        CloudStore.addProduct(payload);
+        showToast('Nuovo prodotto aggiunto al catalogo!');
+      }
+
+      productModal.classList.remove('show');
+      renderKPIs();
+      renderTable();
+      renderReorderList();
+    });
+
+    // Local file input fallback
+    localFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          formImgPreview.src = evt.target.result;
+          prodImageInput.value = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // --- QR CODE PHOTO UPLOAD WORKFLOW ---
+    window.openQrForProduct = function(productId) {
+      openEditProduct(productId);
+      setTimeout(() => {
+        btnTriggerQrPhoto.click();
+      }, 200);
+    };
+
+    btnTriggerQrPhoto.addEventListener('click', () => {
+      currentSessionId = 'svapo_' + Date.now();
+      const peerId = 'cloud-adm-' + currentSessionId;
+
+      let baseUrl = window.location.href.split('admin.html')[0];
+      if (!baseUrl.endsWith('/')) baseUrl += '/';
+      const uploadUrl = baseUrl + 'upload.html?session=' + currentSessionId + '&peer=' + peerId;
+
+      btnOpenMobileTest.onclick = () => window.open(uploadUrl, '_blank');
+
+      // Generate QR Code with multi-tier fallback
+      qrCodeContainer.innerHTML = '';
+      let qrRendered = false;
+      if (typeof QRCode !== 'undefined') {
+        try {
+          new QRCode(qrCodeContainer, {
+            text: uploadUrl,
+            width: 220,
+            height: 220,
+            colorDark: '#070714',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+          qrRendered = true;
+        } catch (err) {
+          console.warn('QRCode library error:', err);
+        }
+      }
+
+      if (!qrRendered) {
+        const img = document.createElement('img');
+        img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(uploadUrl);
+        img.style.width = '220px';
+        img.style.height = '220px';
+        img.alt = 'QR Code Upload Foto';
+        img.onerror = () => {
+          qrCodeContainer.innerHTML = `<div style="padding:20px; font-size:12px; color:#000;"><b>Link Fotocamera:</b><br><a href="${uploadUrl}" target="_blank" style="color:var(--pk); word-break:break-all;">Clicca qui per scattare la foto</a></div>`;
+        };
+        qrCodeContainer.appendChild(img);
+      }
+
+      updateQrStatus(false, 'Inquadra il QR con il telefono per scattare la foto...');
+      initReceiver(currentSessionId, peerId);
+      qrModal.classList.add('show');
+    });
+
+    btnCloseQrModal.addEventListener('click', () => {
+      qrModal.classList.remove('show');
+      cleanupReceiver();
+    });
+
+    function updateQrStatus(connected, text) {
+      qrStatusText.textContent = text;
+      if (connected) {
+        qrStatusBadge.classList.add('connected');
+      } else {
+        qrStatusBadge.classList.remove('connected');
+      }
+    }
+
+    function initReceiver(sessionId, peerId) {
+      cleanupReceiver();
+
+      // 1. PeerJS WebRTC P2P Receiver
+      try {
+        peerInstance = new Peer(peerId, { debug: 1 });
+        peerInstance.on('connection', (conn) => {
+          updateQrStatus(true, 'Telefono collegato! Scatta la foto ora...');
+          conn.on('data', (data) => {
+            if (data && data.type === 'PHOTO_UPLOAD' && data.image) {
+              handlePhotoReceived(data.image);
+            }
+          });
+        });
+        peerInstance.on('error', (e) => {
+          console.log('Peer notice:', e);
+        });
+      } catch(e) {}
+
+      // 2. BroadcastChannel Receiver
+      try {
+        activeBroadcast = new BroadcastChannel('svapo_photo_' + sessionId);
+        activeBroadcast.onmessage = (event) => {
+          if (event.data && event.data.image) {
+            handlePhotoReceived(event.data.image);
+          }
+        };
+      } catch(e) {}
+
+      // 3. LocalStorage StorageEvent Receiver
+      window.addEventListener('storage', handleStorageEvent);
+    }
+
+    function handleStorageEvent(e) {
+      if (e.key === 'svapo_upload_' + currentSessionId && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && parsed.image) {
+            handlePhotoReceived(parsed.image);
+          }
+        } catch(err) {}
+      }
+    }
+
+    function handlePhotoReceived(imageData) {
+      formImgPreview.src = imageData;
+      prodImageInput.value = imageData;
+      qrModal.classList.remove('show');
+      cleanupReceiver();
+      showToast('Foto ricevuta dal telefono con successo!');
+    }
+
+    function cleanupReceiver() {
+      if (peerInstance) {
+        try { peerInstance.destroy(); } catch(e) {}
+        peerInstance = null;
+      }
+      if (activeBroadcast) {
+        try { activeBroadcast.close(); } catch(e) {}
+        activeBroadcast = null;
+      }
+      window.removeEventListener('storage', handleStorageEvent);
+    }
+
+    // --- REORDER & LAYOUT SECTION ---
+    function renderReorderList() {
+      const products = CloudStore.getProducts();
+      reorderList.innerHTML = '';
+
+      products.forEach((p, idx) => {
+        const item = document.createElement('div');
+        item.className = 'reorder-item';
+        item.dataset.id = p.id;
+        item.draggable = true;
+
+        item.innerHTML = `
+          <div class="reorder-info">
+            <span class="reorder-handle">${CloudIcons.get('grip')}</span>
+            <img src="${p.image}" class="prod-thumb" alt="${p.name}">
+            <div>
+              <div style="font-weight:700;">#${idx + 1} — ${p.name}</div>
+              <div style="font-size:11px; color:var(--cy);">${p.categoryLabel || p.category} — €${p.price.toFixed(2)}</div>
+            </div>
+          </div>
+          <div class="reorder-btns">
+            <button class="btn-arrow" onclick="moveProductOrder('${p.id}', -1)" title="Sposta su" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>
+              ${CloudIcons.get('arrowUp')}
+            </button>
+            <button class="btn-arrow" onclick="moveProductOrder('${p.id}', 1)" title="Sposta giù" ${idx === products.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>
+              ${CloudIcons.get('arrowDown')}
+            </button>
+          </div>
+        `;
+
+        // Drag & Drop
+        item.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', p.id);
+          item.style.opacity = '0.5';
+        });
+        item.addEventListener('dragend', () => {
+          item.style.opacity = '1';
+        });
+        item.addEventListener('dragover', (e) => e.preventDefault());
+        item.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData('text/plain');
+          if (draggedId && draggedId !== p.id) {
+            handleDragDropReorder(draggedId, p.id);
+          }
+        });
+
+        reorderList.appendChild(item);
+      });
+    }
+
+    window.moveProductOrder = function(id, direction) {
+      const products = CloudStore.getProducts();
+      const index = products.findIndex(p => p.id === id);
+      if (index === -1) return;
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= products.length) return;
+
+      const temp = products[index];
+      products[index] = products[targetIndex];
+      products[targetIndex] = temp;
+
+      CloudStore.saveProducts(products);
+      renderReorderList();
+      renderTable();
+      showToast('Disposizione aggiornata!');
+    };
+
+    function handleDragDropReorder(draggedId, targetId) {
+      const products = CloudStore.getProducts();
+      const draggedIndex = products.findIndex(p => p.id === draggedId);
+      const targetIndex = products.findIndex(p => p.id === targetId);
+      if (draggedIndex === -1 || targetIndex === -1) return;
+
+      const [removed] = products.splice(draggedIndex, 1);
+      products.splice(targetIndex, 0, removed);
+
+      CloudStore.saveProducts(products);
+      renderReorderList();
+      renderTable();
+      showToast('Nuova disposizione salvata!');
+    }
+
+    btnSaveOrder.addEventListener('click', () => {
+      showToast('Disposizione catalogo salvata con successo!');
+    });
+
+    // Layout Mode selection
+    function initLayoutCards() {
+      const settings = CloudStore.getLayoutSettings();
+      const cards = document.querySelectorAll('.layout-card');
+      cards.forEach(card => {
+        const cols = parseInt(card.dataset.cols, 10);
+        if (cols === settings.columns) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
+
+        card.addEventListener('click', () => {
+          cards.forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          CloudStore.saveLayoutSettings({ ...settings, columns: cols });
+          showToast(`Layout impostato a ${cols} colonne!`);
+        });
+      });
+    }
+
+    // Upsell Form Settings
+    const upsellSettingsForm = document.getElementById('upsellSettingsForm');
+    upsellSettingsForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const config = CloudStore.getUpsellConfig();
+      config.title = document.getElementById('upsellTitle').value.trim();
+      config.price = parseFloat(document.getElementById('upsellPrice').value) || 8.00;
+      config.originalPrice = parseFloat(document.getElementById('upsellOriginalPrice').value) || 14.90;
+      config.timerSeconds = parseInt(document.getElementById('upsellTimer').value, 10) || 300;
+      config.socialProof = document.getElementById('upsellSocialProof').value.trim();
+      CloudStore.saveUpsellConfig(config);
+      showToast('Impostazioni Upsell salvate!');
+    });
+
+    // Helper: Toast
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    // Initialize
+    initAuth();
+  </script>
+</body>
+</html>
