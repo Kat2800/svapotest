@@ -472,7 +472,7 @@
       text-decoration: line-through; margin-left: 6px;
     }
 
-    /* "Disponibile in Negozio" — Soft green, reassuring */
+    /* "Informazioni in negozio" — Soft green, reassuring */
     .btn-available {
       width: 100%; padding: 12px;
       background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.2);
@@ -612,17 +612,304 @@
       .store-info-banner { grid-template-columns: 1fr; }
       .products-grid.cols-3 { grid-template-columns: 1fr; }
     }
+
+    .product-card { cursor: pointer; }
+    .product-card:focus-visible { outline: 2px solid var(--cy); outline-offset: 4px; }
+    .product-card .btn-available { pointer-events: none; }
+    .product-card .btn-visit-store { pointer-events: none; }
+    .details-hint { color: var(--cy); font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 12px; }
+
+    .product-modal, .cookie-banner {
+      position: fixed; z-index: 200; inset: 0; display: none;
+      align-items: center; justify-content: center; padding: 20px;
+      background: rgba(3, 4, 18, .82); backdrop-filter: blur(14px);
+    }
+    .product-modal.open, .cookie-banner.open { display: flex; }
+    .product-modal-card {
+      position: relative; width: min(760px, 100%); max-height: 88vh; overflow: auto;
+      display: grid; grid-template-columns: minmax(220px, .9fr) 1.1fr; gap: 28px;
+      padding: 30px; border: 1px solid rgba(25,230,255,.2); border-radius: 24px;
+      background: linear-gradient(145deg, #171735, #0b0b1e);
+      box-shadow: 0 25px 90px rgba(0,0,0,.55);
+    }
+    .product-modal-image { min-height: 260px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.025); border-radius:18px; }
+    .product-modal-image img { max-width:90%; max-height:340px; object-fit:contain; }
+    .product-modal-copy { align-self:center; }
+    .product-modal-copy h2 { font-size: clamp(24px,4vw,36px); margin:8px 0 12px; }
+    .product-modal-copy p { color:var(--text-muted); line-height:1.8; font-size:13px; }
+    .product-modal-price { color:var(--cy); font-size:24px; font-weight:900; margin:18px 0; }
+    .modal-close {
+      position:absolute; top:14px; right:14px; width:38px; height:38px; border-radius:50%;
+      border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06);
+      color:#fff; font-size:22px; cursor:pointer;
+    }
+    .modal-store-note { font-size:11px !important; color:var(--cy) !important; margin-top:14px; }
+    .cookie-banner { inset:auto 20px 20px; padding:0; background:transparent; justify-content:flex-end; }
+    .cookie-card {
+      width:min(540px,100%); padding:22px; border-radius:18px;
+      background:#141435; border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 15px 55px rgba(0,0,0,.5);
+    }
+    .cookie-card h3 { font-size:15px; margin-bottom:8px; }
+    .cookie-card p { color:var(--text-muted); font-size:11px; line-height:1.7; }
+    .cookie-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+    .cookie-actions button {
+      border-radius:9px; padding:10px 14px; cursor:pointer; font:700 10px Montserrat,sans-serif;
+      letter-spacing:1px; text-transform:uppercase;
+    }
+    .cookie-accept { border:0; color:#fff; background:linear-gradient(135deg,var(--pk),#b23cff); }
+    .cookie-reject { color:#fff; background:transparent; border:1px solid rgba(255,255,255,.2); }
+    .cookie-link { color:var(--cy); text-decoration:underline; cursor:pointer; background:none; border:0; font:inherit; }
+    @media(max-width:650px) {
+      .product-modal-card { grid-template-columns:1fr; gap:16px; padding:22px; }
+      .product-modal-image { min-height:180px; }
+      .product-modal-image img { max-height:220px; }
+      .cookie-banner { inset:auto 10px 10px; }
+    }
+
   </style>
 </head>
 <body>
+  <!-- POPUP VERIFICA MAGGIORE ETÀ -->
+  <div id="age-gate" role="dialog" aria-modal="true" aria-labelledby="age-title">
+    <div class="age-box">
+      <div class="age-logo">CLOUD <span>DISTRICT</span></div>
 
-  <!-- Ambient organic background blobs -->
-  <div class="ambient-mesh" aria-hidden="true">
-    <div class="orb"></div>
-    <div class="orb"></div>
-    <div class="orb"></div>
-    <div class="orb"></div>
+      <div class="age-icon">18+</div>
+
+      <h2 id="age-title">Accesso riservato ai maggiorenni</h2>
+
+      <p class="age-main">
+        Per navigare sul sito devi avere almeno 18 anni.
+      </p>
+
+      <p class="age-description">
+        I prodotti presenti nel portale sono destinati ai soli fumatori
+        che abbiano compiuto la maggiore età.
+      </p>
+
+      <p class="age-question">
+        Verifica la tua età prima di accedere al sito:
+      </p>
+
+      <button id="age-confirm" class="age-button age-yes">
+        Dichiaro di avere 18 o più anni
+      </button>
+
+      <button id="age-deny" class="age-button age-no">
+        Ho meno di 18 anni
+      </button>
+
+      <small>Cloud District · Accesso riservato ai maggiorenni</small>
+    </div>
   </div>
+
+  <style>
+    #age-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(5, 5, 15, 0.97);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .age-box {
+      width: 100%;
+      max-width: 470px;
+      padding: 38px 30px;
+      text-align: center;
+      background: linear-gradient(145deg, #141435, #0b0b1e);
+      border: 1px solid rgba(255, 79, 195, 0.35);
+      border-radius: 22px;
+      box-shadow: 0 0 60px rgba(255, 79, 195, 0.12);
+      animation: ageAppear 0.4s ease;
+    }
+
+    @keyframes ageAppear {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .age-logo {
+      font-size: 21px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #ffffff;
+      margin-bottom: 28px;
+    }
+
+    .age-logo span {
+      color: #ff4fc3;
+    }
+
+    .age-icon {
+      width: 82px;
+      height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      border: 2px solid #ff4fc3;
+      border-radius: 50%;
+      color: #ff4fc3;
+      font-size: 27px;
+      font-weight: 900;
+      box-shadow: 0 0 25px rgba(255, 79, 195, 0.2);
+    }
+
+    .age-box h2 {
+      color: #ffffff;
+      font-size: 23px;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .age-main {
+      color: #19e6ff;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .age-description {
+      color: #b8c4d8;
+      font-size: 13px;
+      line-height: 1.7;
+      margin-bottom: 22px;
+    }
+
+    .age-question {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .age-button {
+      display: block;
+      width: 100%;
+      padding: 16px 12px;
+      margin-top: 12px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .age-yes {
+      color: #0b0b1e;
+      background: linear-gradient(90deg, #ff4fc3, #19e6ff);
+      border: none;
+    }
+
+    .age-yes:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 25px rgba(255, 79, 195, 0.3);
+    }
+
+    .age-no {
+      color: #ffffff;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .age-no:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .age-box small {
+      display: block;
+      margin-top: 25px;
+      color: #68758e;
+      font-size: 10px;
+    }
+
+    body.age-locked {
+      overflow: hidden;
+    }
+
+    @media (max-width: 480px) {
+      .age-box {
+        padding: 30px 20px;
+      }
+
+      .age-box h2 {
+        font-size: 20px;
+      }
+    }
+  </style>
+
+  <script>
+  (function () {
+    const gate = document.getElementById("age-gate");
+    const confirmButton = document.getElementById("age-confirm");
+    const denyButton = document.getElementById("age-deny");
+
+    // Blocca la navigazione finché l'età non viene verificata.
+    document.body.classList.add("age-locked");
+
+    // Ricorda la conferma sul dispositivo.
+    if (sessionStorage.getItem("cloudDistrictAgeVerified") === "true") {
+      gate.remove();
+      document.body.classList.remove("age-locked");
+      return;
+    }
+
+    confirmButton.addEventListener("click", function () {
+      sessionStorage.setItem("cloudDistrictAgeVerified", "true");
+      gate.remove();
+      document.body.classList.remove("age-locked");
+    });
+
+    denyButton.addEventListener("click", function () {
+      sessionStorage.removeItem("cloudDistrictAgeVerified");
+
+      document.body.innerHTML = `
+        <main style="
+          min-height:100vh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          flex-direction:column;
+          padding:25px;
+          text-align:center;
+          background:#0b0b1e;
+          color:#fff;
+          font-family:Montserrat,sans-serif;
+        ">
+          <h1 style="color:#ff4fc3;font-size:32px;margin-bottom:20px;">
+            Accesso non consentito
+          </h1>
+          <p style="color:#b8c4d8;line-height:1.7;">
+            Questo sito è riservato esclusivamente alle persone
+            che hanno compiuto 18 anni.
+          </p>
+        </main>
+      `;
+    });
+  })();
+  </script>
+    <!-- Ambient organic background blobs -->
+    <div class="ambient-mesh" aria-hidden="true">
+      <div class="orb"></div>
+      <div class="orb"></div>
+      <div class="orb"></div>
+      <div class="orb"></div>
+    </div>
 
   <!-- Navigation -->
   <header class="nav">
@@ -753,7 +1040,7 @@
       <div class="opts"><b>Dettagli</b><ul><li>Gusto dolce, cioccolato</li><li>Flacone da 60 ml</li><li>Made in Italy</li></ul></div>
 
       <div class="dots" aria-label="Prodotti"></div>
-      <div class="age">Vietato ai minori di 18 anni • Contiene nicotina</div>
+      <div class="age">Vietata ai minori di 18 anni • Vetrina informativa</div>
       <div class="frame"></div>
       <div class="bar" id="bar"></div>
 
@@ -778,7 +1065,7 @@
       </div>
       <h2 class="shop-title"><span class="p">Scopri Cosa</span> <span class="c">Trovi in Negozio</span></h2>
       <p class="shop-desc">
-        Dispositivi, liquidi artigianali e accessori selezionati con passione a Torino. Vieni a provarli di persona!
+        Una vetrina informativa dei prodotti presenti in negozio. Consulta le caratteristiche e vieni a trovarci a Torino.
       </p>
     </div>
 
@@ -879,6 +1166,34 @@
     <div class="floor"></div>
   </section>
 
+
+  <!-- Scheda informativa prodotto: nessun acquisto o ordine online -->
+  <div class="product-modal" id="productModal" role="dialog" aria-modal="true" aria-labelledby="modalProductName">
+    <div class="product-modal-card">
+      <button class="modal-close" id="modalClose" aria-label="Chiudi">&times;</button>
+      <div class="product-modal-image"><img id="modalProductImage" src="" alt=""></div>
+      <div class="product-modal-copy">
+        <div class="card-category" id="modalProductCategory"></div>
+        <h2 id="modalProductName"></h2>
+        <p id="modalProductDescription"></p>
+        <div class="product-modal-price" id="modalProductPrice"></div>
+        <p class="modal-store-note">Scheda a solo scopo informativo. Nessuna vendita o ordine online. Per informazioni, rivolgiti al punto vendita.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preferenze privacy: la statistica dei prodotti visualizzati parte solo dopo consenso -->
+  <div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Preferenze cookie">
+    <div class="cookie-card">
+      <h3>La tua privacy conta</h3>
+      <p>Usiamo strumenti tecnici necessari al funzionamento del sito. Solo con il tuo consenso salviamo sul dispositivo i prodotti che visualizzi, così da poter mostrare nella presentazione iniziale quelli più consultati. Non utilizziamo questi dati per acquisti o profilazione pubblicitaria.</p>
+      <div class="cookie-actions">
+        <button class="cookie-accept" id="acceptCookies">Accetta statistiche</button>
+        <button class="cookie-reject" id="rejectCookies">Rifiuta</button>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <footer id="contatti">
     <div class="footer-col">
@@ -894,6 +1209,7 @@
     <div class="footer-col">
       <span>Vietata la vendita ai minori di 18 anni.</span>
       <span>La nicotina crea dipendenza.</span>
+      <span>Vetrina informativa: non è possibile acquistare o ordinare online.</span>
     </div>
   </footer>
 
@@ -943,21 +1259,125 @@
     // ========================================================
     // VETRINA PRODOTTI — Solo visualizzazione
     // ========================================================
+    // Preferenze: la misurazione delle visualizzazioni è disattivata fino al consenso.
+    const CONSENT_KEY = 'cloudDistrictAnalyticsConsent';
+    const VIEWS_KEY = 'cloudDistrictProductViews';
+    const cookieBanner = document.getElementById('cookieBanner');
+    const consent = () => localStorage.getItem(CONSENT_KEY);
+    if (!consent()) cookieBanner.classList.add('open');
+
+    document.getElementById('acceptCookies').addEventListener('click', () => {
+      localStorage.setItem(CONSENT_KEY, 'accepted');
+      cookieBanner.classList.remove('open');
+      applyPopularHero();
+    });
+    document.getElementById('rejectCookies').addEventListener('click', () => {
+      localStorage.setItem(CONSENT_KEY, 'rejected');
+      localStorage.removeItem(VIEWS_KEY);
+      cookieBanner.classList.remove('open');
+    });
+
+    function getViewCounts() {
+      try { return JSON.parse(localStorage.getItem(VIEWS_KEY) || '{}'); }
+      catch (_) { return {}; }
+    }
+    function recordProductView(product) {
+      if (consent() !== 'accepted') return;
+      const counts = getViewCounts();
+      const key = String(product.id ?? product.name);
+      counts[key] = (counts[key] || 0) + 1;
+      localStorage.setItem(VIEWS_KEY, JSON.stringify(counts));
+      applyPopularHero();
+    }
+    function getPopularProducts(products) {
+      const counts = getViewCounts();
+      return [...products].sort((a, b) => {
+        const av = counts[String(a.id ?? a.name)] || 0;
+        const bv = counts[String(b.id ?? b.name)] || 0;
+        return bv - av;
+      }).slice(0, 3);
+    }
+
+    function applyPopularHero() {
+      if (consent() !== 'accepted') return;
+      const products = CloudStore.getProducts();
+      if (!products.length) return;
+      const counts = getViewCounts();
+      const hasViews = Object.values(counts).some(v => Number(v) > 0);
+      if (!hasViews) return;
+
+      const popular = getPopularProducts(products);
+      const heroPanels = [...document.querySelectorAll('.stage .panel')];
+      const heroWords = [...document.querySelectorAll('.stage .word')];
+      const heroImages = [...document.querySelectorAll('.stage .prod img')];
+      const heroOpts = [...document.querySelectorAll('.stage .opts')];
+      const heroGlows = [...document.querySelectorAll('.stage .glow')];
+
+      popular.forEach((product, i) => {
+        if (!heroPanels[i] || !heroImages[i]) return;
+        const panel = heroPanels[i];
+        const title = panel.querySelector('h1');
+        const price = panel.querySelector('.price');
+        const oldPrice = panel.querySelector('.price-strike');
+        const description = panel.querySelector('p');
+        const rating = panel.querySelector('.hero-rating');
+        if (title) title.textContent = product.name || 'Prodotto';
+        if (price) price.textContent = Number(product.price || 0).toLocaleString('it-IT', {style:'currency',currency:'EUR'});
+        if (oldPrice) oldPrice.textContent = product.originalPrice ? Number(product.originalPrice).toLocaleString('it-IT',{style:'currency',currency:'EUR'}) : '';
+        if (description) description.textContent = product.description || 'Scopri le caratteristiche in negozio.';
+        if (rating) rating.style.display = 'none';
+        heroImages[i].src = product.image || '';
+        heroImages[i].alt = product.name || 'Prodotto';
+        if (heroWords[i]) heroWords[i].textContent = product.name || '';
+        if (heroOpts[i]) {
+          const heading = heroOpts[i].querySelector('b');
+          const list = heroOpts[i].querySelector('ul');
+          if (heading) heading.textContent = 'Più visualizzato';
+          if (list) list.innerHTML = `<li>${product.categoryLabel || product.category || 'Prodotto'}</li><li>Consulta la scheda</li><li>Disponibile in negozio</li>`;
+        }
+        if (heroGlows[i]) heroGlows[i].style.setProperty('--g', i % 2 ? '#19e6ff' : '#ff4fc3');
+      });
+    }
+
     const shopProductsGrid = document.getElementById('shopProductsGrid');
     const catButtons = document.querySelectorAll('.cat-btn');
     let currentCategoryFilter = 'all';
+    let catalogProducts = [];
+
+    function openProductDetails(product) {
+      recordProductView(product);
+      document.getElementById('modalProductImage').src = product.image || '';
+      document.getElementById('modalProductImage').alt = product.name || 'Prodotto';
+      document.getElementById('modalProductCategory').textContent = product.categoryLabel || product.category || '';
+      document.getElementById('modalProductName').textContent = product.name || 'Prodotto';
+      document.getElementById('modalProductDescription').textContent = product.description || 'Caratteristiche non disponibili.';
+      document.getElementById('modalProductPrice').textContent = Number.isFinite(Number(product.price))
+        ? Number(product.price).toLocaleString('it-IT', {style:'currency',currency:'EUR'}) : '';
+      document.getElementById('productModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeProductDetails() {
+      document.getElementById('productModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    document.getElementById('modalClose').addEventListener('click', closeProductDetails);
+    document.getElementById('productModal').addEventListener('click', e => {
+      if (e.target.id === 'productModal') closeProductDetails();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeProductDetails();
+    });
 
     function renderShopCatalog() {
-      const products = CloudStore.getProducts();
+      catalogProducts = CloudStore.getProducts();
       const layout = CloudStore.getLayoutSettings();
       shopProductsGrid.className = 'products-grid cols-' + (layout.columns || 3);
-
-      let filtered = currentCategoryFilter === 'all'
-        ? products
-        : products.filter(p => p.category === currentCategoryFilter);
+      const filtered = currentCategoryFilter === 'all'
+        ? catalogProducts
+        : catalogProducts.filter(p => p.category === currentCategoryFilter);
 
       shopProductsGrid.innerHTML = '';
-      if (filtered.length === 0) {
+      if (!filtered.length) {
         shopProductsGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--text-muted);font-size:14px;">Nessun prodotto in questa categoria.</div>`;
         return;
       }
@@ -967,40 +1387,30 @@
         const perimeterDecor = CloudIcons.getPerimeterDecorations(p.decorType || 'vapor');
         const card = document.createElement('div');
         card.className = 'product-card';
+        card.tabIndex = 0;
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', `Apri dettagli ${p.name || 'prodotto'}`);
         card.innerHTML = `
           ${perimeterDecor}
           <div class="card-content-inner">
-            <div class="card-badge">
-              ${CloudIcons.get('sparkles')}
-              <span>${p.badge || 'Consigliato'}</span>
-            </div>
-            <div class="card-image-wrap">
-              <img src="${p.image}" alt="${p.name}" loading="lazy">
-            </div>
-            <div class="card-category">${p.categoryLabel || p.category}</div>
-            <h3 class="card-title">${p.name}</h3>
-            <div class="card-rating">
-              ${starIcons} ${p.rating || 4.9} <span>(${p.reviewsCount || 120})</span>
-            </div>
+            <div class="card-badge">${CloudIcons.get('sparkles')}<span>${p.badge || 'In vetrina'}</span></div>
+            <div class="card-image-wrap"><img src="${p.image || ''}" alt="${p.name || 'Prodotto'}" loading="lazy"></div>
+            <div class="card-category">${p.categoryLabel || p.category || ''}</div>
+            <h3 class="card-title">${p.name || 'Prodotto'}</h3>
+            <div class="card-rating">${starIcons} ${p.rating || 4.9} <span>(${p.reviewsCount || 120})</span></div>
             <p class="card-desc">${p.description || ''}</p>
-            <div class="card-price-row">
-              <div>
-                <span class="card-price">€${p.price.toFixed(2)}</span>
-                ${p.originalPrice ? `<span class="card-original-price">€${p.originalPrice.toFixed(2)}</span>` : ''}
-              </div>
-            </div>
-            <div class="btn-available">
-              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Disponibile in Negozio
-            </div>
-            <a class="btn-visit-store" href="#opening">
-              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Vieni a Provarlo
-            </a>
-          </div>
-        `;
+            <div class="card-price-row"><div><span class="card-price">€${Number(p.price || 0).toFixed(2)}</span>
+            ${p.originalPrice ? `<span class="card-original-price">€${Number(p.originalPrice).toFixed(2)}</span>` : ''}</div></div>
+            <div class="btn-available">Scheda informativa</div>
+            <div class="details-hint">Clicca per vedere le caratteristiche ↗</div>
+          </div>`;
+        card.addEventListener('click', () => openProductDetails(p));
+        card.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProductDetails(p); }
+        });
         shopProductsGrid.appendChild(card);
       });
+      applyPopularHero();
     }
 
     catButtons.forEach(btn => {
