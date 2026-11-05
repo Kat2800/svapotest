@@ -863,14 +863,12 @@
     document.body.classList.add("age-locked");
 
     // Ricorda la conferma sul dispositivo.
-    if (sessionStorage.getItem("cloudDistrictAgeVerified") === "true") {
+    confirmBtn.addEventListener('click', function () {
       gate.remove();
-      document.body.classList.remove("age-locked");
-      return;
-    }
+      document.body.classList.remove('age-locked');
+  });
 
     confirmButton.addEventListener("click", function () {
-      sessionStorage.setItem("cloudDistrictAgeVerified", "true");
       gate.remove();
       document.body.classList.remove("age-locked");
     });
